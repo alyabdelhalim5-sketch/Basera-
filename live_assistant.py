@@ -37,6 +37,7 @@ class LiveAssistant:
         self.enable_tts = enable_tts
         self.is_running = True
         self.is_processing = False
+        self.lock = threading.Lock()
         self.pipeline = SmartGlassesPipeline(
             target_resolution=resolution,
             max_new_tokens=tokens
@@ -50,11 +51,6 @@ class LiveAssistant:
         print(BANNER)
 
     def trigger_capture_and_describe(self, trigger_source="Manual"):
-        if self.is_processing:
-            print("[System] Already processing previous frame... please wait.")
-            return
-
-        self.is_processing = True
         print(f"\n📸 [TRIGGER: {trigger_source}] Taking live camera snapshot...")
 
         try:
@@ -77,29 +73,34 @@ class LiveAssistant:
             print("─" * 55)
 
         except Exception as e:
-            print(f"[Error] Failed to process camera capture: {e}")
+            print(f"[Error] Camera/Inference failed: {e}")
 
         finally:
-            self.is_processing = False
+            with self.lock:
+                self.is_processing = False
             print("\n👉 جاهز! تحدث في المايكروفون أو اضغط [Enter] للقطة التالية (أو 'q' للخروج)...")
 
     def voice_listener_loop(self, energy_threshold=0.04):
-        """Monitors microphone for voice activity in background."""
+        """Monitors microphone for voice activity in background safely."""
         sample_rate = 16000
         block_size = int(sample_rate * 0.25) # 250ms chunks
 
         def audio_callback(indata, frames, time_info, status):
-            if not self.is_running or self.is_processing:
+            if not self.is_running:
                 return
 
-            rms = np.sqrt(np.mean(indata**2))
-            if rms > energy_threshold:
-                # Voice detected
-                threading.Thread(
-                    target=self.trigger_capture_and_describe,
-                    args=("Voice Trigger (Mic)",),
-                    daemon=True
-                ).start()
+            with self.lock:
+                if self.is_processing:
+                    return
+
+                rms = np.sqrt(np.mean(indata**2))
+                if rms > energy_threshold:
+                    self.is_processing = True
+                    threading.Thread(
+                        target=self.trigger_capture_and_describe,
+                        args=("Voice Trigger (Mic)",),
+                        daemon=True
+                    ).start()
 
         try:
             with sd.InputStream(samplerate=sample_rate, channels=1,
@@ -120,7 +121,7 @@ class LiveAssistant:
         else:
             print("[Button] Press Enter to capture.")
 
-        # Foreground interactive loop
+        # Foreground interactive loop (resilient against random keystrokes)
         while self.is_running:
             try:
                 cmd = input().strip().lower()
@@ -128,11 +129,25 @@ class LiveAssistant:
                     print("[System] Shutting down Live Assistant...")
                     self.is_running = False
                     break
+                elif cmd == "":
+                    # User pressed Enter
+                    with self.lock:
+                        if not self.is_processing:
+                            self.is_processing = True
+                            threading.Thread(
+                                target=self.trigger_capture_and_describe,
+                                args=("Glasses Button (Enter)",),
+                                daemon=True
+                            ).start()
                 else:
-                    self.trigger_capture_and_describe(trigger_source="Glasses Button (Enter)")
+                    # Ignore random characters like 'ض' or spaces without crashing
+                    pass
             except (KeyboardInterrupt, EOFError):
                 self.is_running = False
                 break
+            except Exception as e:
+                # Keep loop alive
+                continue
 
 
 def main():
