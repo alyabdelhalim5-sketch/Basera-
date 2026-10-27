@@ -1,0 +1,10 @@
+{
+  "model": "SmolVLM2-500M-Video-Instruct",
+  "device": "CPU",
+  "load_time_s": 4.68,
+  "resolution": "384x384",
+  "median_total_ms": 32941,
+  "mean_total_ms": 32490,
+  "median_inference_ms": 32673,
+  "sample_output": "A cityscape with tall buildings and a body of water in the background."
+}

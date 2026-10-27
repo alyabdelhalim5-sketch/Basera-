@@ -1,0 +1,8 @@
+torch>=2.1.0
+torchvision
+transformers>=4.48.0
+accelerate
+pillow
+opencv-python-headless
+psutil
+requests

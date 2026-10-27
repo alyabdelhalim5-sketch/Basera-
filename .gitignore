@@ -1,0 +1,36 @@
+# Virtual environment
+venv/
+env/
+ENV/
+.venv/
+
+# HuggingFace & Model Weights (large binary files >100MB)
+hf_cache/
+*.safetensors
+*.bin
+*.pt
+*.onnx
+
+# Cache & Temporary Directories
+temp/
+pip-cache/
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+
+# Audio outputs & Captured frames
+captured_images/
+*.wav
+*.mp3
+
+# Logs & Diagnostics
+*.log
+dxdiag_out.txt
+
+# OS / Editor specific
+.vscode/
+.idea/
+Thumbs.db
+Desktop.ini
+.DS_Store
