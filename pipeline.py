@@ -21,8 +21,8 @@ LOCAL_MODEL_PATH = r"D:\smart-glasses\hf_cache\smolvlm2_model"
 TTS_SCRIPT_PATH = r"D:\smart-glasses\tts.ps1"
 
 ASSISTIVE_SYSTEM_PROMPT = (
-    "Describe this scene in one short sentence. "
-    "Focus on obstacles, people, vehicles, stairs, or hazards directly ahead."
+    "Describe what you see in clear and helpful detail. "
+    "Mention people, obstacles, furniture, vehicles, stairs, doorways, signs, and spatial relationships."
 )
 
 CHAT_MESSAGES = [
@@ -36,7 +36,7 @@ CHAT_MESSAGES = [
 ]
 
 class SmartGlassesPipeline:
-    def __init__(self, model_path=LOCAL_MODEL_PATH, target_resolution=256, max_new_tokens=18):
+    def __init__(self, model_path=LOCAL_MODEL_PATH, target_resolution=256, max_new_tokens=45):
         self.model_path = model_path
         self.target_resolution = target_resolution
         self.max_new_tokens = max_new_tokens
@@ -193,7 +193,8 @@ def main():
     parser.add_argument("--save-dir", type=str, default=r"D:\smart-glasses\captured_images",
                         help="Directory where camera captures will be saved")
     parser.add_argument("--resolution", type=int, default=256)
-    parser.add_argument("--tokens", type=int, default=18)
+    parser.add_argument("--tokens", type=int, default=45,
+                        help="Maximum new tokens generated in description (default: 45)")
     parser.add_argument("--no-tts", action="store_true")
     args = parser.parse_args()
 

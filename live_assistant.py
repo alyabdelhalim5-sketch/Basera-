@@ -30,7 +30,7 @@ BANNER = r"""
 """
 
 class LiveAssistant:
-    def __init__(self, camera_index=0, resolution=256, tokens=18, enable_tts=True):
+    def __init__(self, camera_index=0, resolution=256, tokens=45, enable_tts=True):
         self.camera_index = camera_index
         self.resolution = resolution
         self.tokens = tokens
@@ -154,7 +154,7 @@ def main():
     parser = argparse.ArgumentParser(description="Basera Smart Glasses Live Assistant")
     parser.add_argument("--camera", type=int, default=0, help="Camera index (default 0)")
     parser.add_argument("--resolution", type=int, default=256, help="Image resolution (default 256)")
-    parser.add_argument("--tokens", type=int, default=18, help="Max new tokens (default 18)")
+    parser.add_argument("--tokens", type=int, default=45, help="Max new tokens in description (default 45)")
     parser.add_argument("--no-tts", action="store_true", help="Disable speech synthesis")
     parser.add_argument("--no-voice", action="store_true", help="Disable mic voice trigger (Enter key only)")
     args = parser.parse_args()
