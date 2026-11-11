@@ -31,5 +31,5 @@ class AiResponse {
 
   @override
   String toString() =>
-      'AiResponse(lang=$language, changed=$sceneChanged, ${latencySeconds}, "${description.substring(0, description.length.clamp(0, 60))}...")';
+      'AiResponse(lang=$language, changed=$sceneChanged, $latencySeconds, "${description.substring(0, description.length.clamp(0, 60))}...")';
 }

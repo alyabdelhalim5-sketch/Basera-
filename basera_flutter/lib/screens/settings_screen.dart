@@ -4,6 +4,8 @@ import '../services/settings_service.dart';
 import '../services/ai_service.dart';
 import '../services/tts_service.dart';
 import '../services/speech_service.dart';
+import '../services/glasses_service.dart';
+import '../providers/app_provider.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -15,10 +17,15 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   late TextEditingController _ipController;
   late TextEditingController _portController;
-  late TextEditingController _tokensController;
+  late TextEditingController _glassesIpController;
+  late TextEditingController _glassesPortController;
+
+  bool _isOfflineMode = true;
   String _language = 'ar';
-  bool _testing = false;
-  String _testResult = '';
+  bool _testingBackend = false;
+  String _backendTestResult = '';
+  bool _testingGlasses = false;
+  String _glassesTestResult = '';
 
   @override
   void initState() {
@@ -26,7 +33,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final settings = context.read<SettingsService>();
     _ipController = TextEditingController(text: settings.backendIp);
     _portController = TextEditingController(text: settings.backendPort.toString());
-    _tokensController = TextEditingController(text: settings.maxTokens.toString());
+    _glassesIpController = TextEditingController(text: settings.glassesIp);
+    _glassesPortController = TextEditingController(text: settings.glassesPort.toString());
+    _isOfflineMode = settings.isOfflineMode;
     _language = settings.language;
   }
 
@@ -34,7 +43,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   void dispose() {
     _ipController.dispose();
     _portController.dispose();
-    _tokensController.dispose();
+    _glassesIpController.dispose();
+    _glassesPortController.dispose();
     super.dispose();
   }
 
@@ -43,213 +53,278 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final ai = context.read<AiService>();
     final tts = context.read<TtsService>();
     final speech = context.read<SpeechService>();
+    final glasses = context.read<GlassesService>();
+    final provider = context.read<AppProvider>();
 
+    await settings.saveIsOfflineMode(_isOfflineMode);
+    await settings.saveLanguage(_language);
     await settings.saveBackendIp(_ipController.text.trim());
     await settings.saveBackendPort(int.tryParse(_portController.text) ?? 8000);
-    await settings.saveLanguage(_language);
-    await settings.saveMaxTokens(int.tryParse(_tokensController.text) ?? 120);
+    await settings.saveGlassesIp(_glassesIpController.text.trim());
+    await settings.saveGlassesPort(int.tryParse(_glassesPortController.text) ?? 80);
 
     ai.updateSettings(
+      isOfflineMode: _isOfflineMode,
+      language: _language,
       backendIp: settings.backendIp,
       port: settings.backendPort,
-      language: settings.language,
-      maxTokens: settings.maxTokens,
     );
-    tts.updateLanguage(settings.language);
-    speech.updateLanguage(settings.language);
 
-    if (mounted) Navigator.pop(context);
+    glasses.updateSettings(
+      ip: settings.glassesIp,
+      port: settings.glassesPort,
+    );
+
+    tts.updateLanguage(_language);
+    speech.updateLanguage(_language);
+    await provider.checkBackend();
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(_language == 'ar' ? 'تم حفظ الإعدادات بنجاح' : 'Settings saved'),
+          backgroundColor: const Color(0xFF10B981),
+        ),
+      );
+      Navigator.pop(context);
+    }
   }
 
-  Future<void> _testConnection() async {
+  Future<void> _testGlassesConnection() async {
     setState(() {
-      _testing = true;
-      _testResult = '';
+      _testingGlasses = true;
+      _glassesTestResult = '';
     });
+
+    final glasses = context.read<GlassesService>();
+    glasses.updateSettings(
+      ip: _glassesIpController.text.trim(),
+      port: int.tryParse(_glassesPortController.text) ?? 80,
+    );
+
+    final ok = await glasses.checkConnection();
+    setState(() {
+      _testingGlasses = false;
+      _glassesTestResult = ok
+          ? (_language == 'ar' ? '✅ تم الاتصال بالنظارة بنجاح' : '✅ Connected to glasses')
+          : (_language == 'ar' ? '❌ تعذر العثور على النظارة' : '❌ Could not reach glasses');
+    });
+  }
+
+  Future<void> _testBackendConnection() async {
+    setState(() {
+      _testingBackend = true;
+      _backendTestResult = '';
+    });
+
     final ai = context.read<AiService>();
-    // Temporarily update IP/port for testing
     ai.updateSettings(
       backendIp: _ipController.text.trim(),
       port: int.tryParse(_portController.text) ?? 8000,
+      isOfflineMode: false,
     );
+
     final ok = await ai.checkHealth();
     setState(() {
-      _testing = false;
-      _testResult = ok ? '✅ Connected!' : '❌ Cannot reach server';
+      _testingBackend = false;
+      _backendTestResult = ok
+          ? (_language == 'ar' ? '✅ تم الاتصال بالخادم بنجاح' : '✅ Backend connected')
+          : (_language == 'ar' ? '❌ تعذر الاتصال بالخادم' : '❌ Backend unreachable');
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      appBar: AppBar(
-        backgroundColor: Colors.black,
-        foregroundColor: Colors.white,
-        title: const Text('⚙️ Settings', style: TextStyle(color: Colors.white)),
-      ),
-      body: ListView(
-        padding: const EdgeInsets.all(20),
-        children: [
-          // ── Backend Connection ───────────────────────────────────────────
-          _sectionTitle('Backend Connection'),
-          _textField(
-            controller: _ipController,
-            label: 'Server IP Address',
-            hint: '192.168.1.100',
-            keyboardType: TextInputType.numberWithOptions(decimal: true),
-          ),
-          const SizedBox(height: 12),
-          _textField(
-            controller: _portController,
-            label: 'Port',
-            hint: '8000',
-            keyboardType: TextInputType.number,
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: ElevatedButton.icon(
-                  onPressed: _testing ? null : _testConnection,
-                  icon: _testing
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.wifi_tethering),
-                  label: const Text('Test Connection'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue.shade800,
-                    foregroundColor: Colors.white,
+    final isAr = _language == 'ar';
+
+    return Directionality(
+      textDirection: isAr ? TextDirection.rtl : TextDirection.ltr,
+      child: Scaffold(
+        backgroundColor: const Color(0xFF090D16),
+        appBar: AppBar(
+          title: Text(isAr ? 'الإعدادات' : 'Settings'),
+          backgroundColor: const Color(0xFF0F172A),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.check, color: Color(0xFF10B981)),
+              onPressed: _save,
+              tooltip: isAr ? 'حفظ' : 'Save',
+            ),
+          ],
+        ),
+        body: ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            // ── Section 1: Offline AI Mode ──────────────────────────────────
+            _buildSectionCard(
+              title: isAr ? 'عقل الذكاء الاصطناعي (AI Engine)' : 'AI Engine',
+              icon: Icons.psychology,
+              children: [
+                SwitchListTile(
+                  title: Text(
+                    isAr ? 'وضع الأوفلاين (بدون إنترنت تماماً)' : '100% Offline Mode',
+                    style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
                   ),
+                  subtitle: Text(
+                    isAr
+                        ? 'يعمل محلياً على معالج الهاتف فورياً في 30ms دون اتصال باللابتوب أو الإنترنت'
+                        : 'Processes locally on phone in <30ms with zero network',
+                    style: const TextStyle(color: Colors.white60, fontSize: 12),
+                  ),
+                  value: _isOfflineMode,
+                  activeColor: const Color(0xFF10B981),
+                  onChanged: (val) => setState(() => _isOfflineMode = val),
                 ),
-              ),
-            ],
-          ),
-          if (_testResult.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.only(top: 8),
-              child: Text(
-                _testResult,
-                style: TextStyle(
-                  color: _testResult.startsWith('✅') ? Colors.green : Colors.red,
+              ],
+            ),
+            const SizedBox(height: 16),
+
+            // ── Section 2: Smart Glasses ────────────────────────────────────
+            _buildSectionCard(
+              title: isAr ? 'نظارة بصيرة الذكية (Basera Glasses)' : 'Basera Smart Glasses',
+              icon: Icons.remove_red_eye,
+              children: [
+                TextField(
+                  controller: _glassesIpController,
+                  decoration: InputDecoration(
+                    labelText: isAr ? 'عنوان IP للنظارة (Wi-Fi Direct)' : 'Glasses IP',
+                    hintText: '192.168.4.1',
+                    filled: true,
+                    fillColor: Colors.black26,
+                  ),
+                  keyboardType: TextInputType.datetime,
                 ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: _glassesPortController,
+                  decoration: InputDecoration(
+                    labelText: isAr ? 'منفذ البث (Port)' : 'Port',
+                    hintText: '80',
+                    filled: true,
+                    fillColor: Colors.black26,
+                  ),
+                  keyboardType: TextInputType.number,
+                ),
+                const SizedBox(height: 12),
+                ElevatedButton.icon(
+                  onPressed: _testingGlasses ? null : _testGlassesConnection,
+                  icon: _testingGlasses
+                      ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
+                      : const Icon(Icons.wifi_tethering),
+                  label: Text(isAr ? 'اختبار اتصال النظارة' : 'Test Glasses Connection'),
+                  style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1E293B)),
+                ),
+                if (_glassesTestResult.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Text(_glassesTestResult, style: const TextStyle(fontWeight: FontWeight.bold)),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 16),
+
+            // ── Section 3: Language & Speech ────────────────────────────────
+            _buildSectionCard(
+              title: isAr ? 'اللغة والصوت' : 'Language & Speech',
+              icon: Icons.language,
+              children: [
+                DropdownButtonFormField<String>(
+                  value: _language,
+                  decoration: InputDecoration(
+                    labelText: isAr ? 'لغة التطبيق والنطق' : 'Language',
+                    filled: true,
+                    fillColor: Colors.black26,
+                  ),
+                  dropdownColor: const Color(0xFF1E293B),
+                  items: const [
+                    DropdownMenuItem(value: 'ar', child: Text('العربية (Arabic)')),
+                    DropdownMenuItem(value: 'en', child: Text('English')),
+                  ],
+                  onChanged: (val) {
+                    if (val != null) setState(() => _language = val);
+                  },
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+
+            // ── Section 4: Optional Laptop Backend (Hybrid) ─────────────────
+            if (!_isOfflineMode)
+              _buildSectionCard(
+                title: isAr ? 'خادم اللابتوب الاختياري (SmolVLM2 Backend)' : 'Laptop Backend',
+                icon: Icons.laptop,
+                children: [
+                  TextField(
+                    controller: _ipController,
+                    decoration: InputDecoration(
+                      labelText: isAr ? 'عنوان IP للابتوب' : 'Laptop IP',
+                      hintText: '10.0.0.109',
+                      filled: true,
+                      fillColor: Colors.black26,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: _portController,
+                    decoration: InputDecoration(
+                      labelText: isAr ? 'المنفذ (Port)' : 'Port',
+                      hintText: '8000',
+                      filled: true,
+                      fillColor: Colors.black26,
+                    ),
+                    keyboardType: TextInputType.number,
+                  ),
+                  const SizedBox(height: 12),
+                  ElevatedButton.icon(
+                    onPressed: _testingBackend ? null : _testBackendConnection,
+                    icon: _testingBackend
+                        ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
+                        : const Icon(Icons.link),
+                    label: Text(isAr ? 'اختبار اتصال الخادم' : 'Test Backend Connection'),
+                    style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1E293B)),
+                  ),
+                  if (_backendTestResult.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: Text(_backendTestResult, style: const TextStyle(fontWeight: FontWeight.bold)),
+                    ),
+                ],
               ),
-            ),
-
-          const SizedBox(height: 28),
-
-          // ── Language ─────────────────────────────────────────────────────
-          _sectionTitle('Language / اللغة'),
-          Row(
-            children: [
-              _langChoice('ar', 'العربية 🇸🇦'),
-              const SizedBox(width: 12),
-              _langChoice('en', 'English 🇬🇧'),
-            ],
-          ),
-
-          const SizedBox(height: 28),
-
-          // ── AI Settings ───────────────────────────────────────────────────
-          _sectionTitle('AI Settings'),
-          _textField(
-            controller: _tokensController,
-            label: 'Max description tokens (longer = slower)',
-            hint: '120',
-            keyboardType: TextInputType.number,
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Higher = richer descriptions but adds ~2s per 30 tokens on CPU.',
-            style: TextStyle(color: Colors.grey.shade500, fontSize: 12),
-          ),
-
-          const SizedBox(height: 40),
-
-          // ── Save ──────────────────────────────────────────────────────────
-          ElevatedButton.icon(
-            onPressed: _save,
-            icon: const Icon(Icons.save),
-            label: const Text('Save'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.green.shade700,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(vertical: 14),
-            ),
-          ),
-
-          const SizedBox(height: 28),
-          // ── Info ──────────────────────────────────────────────────────────
-          Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: Colors.grey.shade900,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: const Text(
-              'ℹ️  Run the Python server on your laptop:\n\n'
-              'D:\\smart-glasses\\venv\\Scripts\\python.exe -m uvicorn api_server:app --host 0.0.0.0 --port 8000\n\n'
-              'Make sure the phone and laptop are on the same Wi-Fi network.',
-              style: TextStyle(color: Colors.grey, fontSize: 12, height: 1.6),
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
-  Widget _sectionTitle(String title) => Padding(
-        padding: const EdgeInsets.only(bottom: 10),
-        child: Text(title,
-            style: const TextStyle(
-                color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
-      );
-
-  Widget _textField({
-    required TextEditingController controller,
-    required String label,
-    String? hint,
-    TextInputType? keyboardType,
-  }) =>
-      TextField(
-        controller: controller,
-        keyboardType: keyboardType,
-        style: const TextStyle(color: Colors.white),
-        decoration: InputDecoration(
-          labelText: label,
-          hintText: hint,
-          labelStyle: const TextStyle(color: Colors.grey),
-          hintStyle: const TextStyle(color: Colors.grey),
-          enabledBorder: OutlineInputBorder(
-            borderSide: BorderSide(color: Colors.grey.shade700),
-          ),
-          focusedBorder: const OutlineInputBorder(
-            borderSide: BorderSide(color: Colors.blue),
-          ),
-        ),
-      );
-
-  Widget _langChoice(String code, String label) => Expanded(
-        child: GestureDetector(
-          onTap: () => setState(() => _language = code),
-          child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 12),
-            decoration: BoxDecoration(
-              color: _language == code ? Colors.blue.shade800 : Colors.grey.shade900,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(
-                color: _language == code ? Colors.blue : Colors.grey.shade700,
+  Widget _buildSectionCard({
+    required String title,
+    required IconData icon,
+    required List<Widget> children,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF161B22),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, color: const Color(0xFF10B981), size: 20),
+              const SizedBox(width: 8),
+              Text(
+                title,
+                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white),
               ),
-            ),
-            child: Text(
-              label,
-              textAlign: TextAlign.center,
-              style: const TextStyle(color: Colors.white, fontSize: 15),
-            ),
+            ],
           ),
-        ),
-      );
+          const Divider(color: Colors.white12, height: 20),
+          ...children,
+        ],
+      ),
+    );
+  }
 }

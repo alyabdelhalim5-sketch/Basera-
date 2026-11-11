@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Basera">
+    <title>بصيرة - Basera AI</title>
+    <style>
+        :root {
+            --primary: #10b981;
+            --primary-hover: #059669;
+            --bg: #090d16;
+            --card-bg: rgba(22, 27, 34, 0.9);
+            --text: #f3f4f6;
+            --text-dim: #9ca3af;
+            --accent: #3b82f6;
+        }
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            -webkit-tap-highlight-color: transparent;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        }
+        body {
+            background-color: var(--bg);
+            color: var(--text);
+            height: 100vh;
+            height: 100dvh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        header {
+            padding: 14px 18px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(12px);
+            z-index: 10;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+        }
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--primary);
+        }
+        select {
+            background: #1e293b;
+            color: white;
+            border: 1px solid #334155;
+            padding: 8px 12px;
+            border-radius: 10px;
+            font-size: 0.9rem;
+            outline: none;
+        }
+        .camera-container {
+            flex: 1;
+            position: relative;
+            background: #0f172a;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            cursor: pointer;
+        }
+        video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: none;
+        }
+        #previewImg {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: none;
+        }
+        .fallback-prompt {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+            padding: 24px;
+            text-align: center;
+            color: var(--text-dim);
+        }
+        .fallback-icon {
+            font-size: 4rem;
+            background: rgba(16, 185, 129, 0.1);
+            width: 90px;
+            height: 90px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px dashed var(--primary);
+        }
+        .camera-overlay {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 16px;
+            pointer-events: none;
+        }
+        .status-pill {
+            align-self: flex-start;
+            padding: 8px 16px;
+            border-radius: 20px;
+            background: rgba(0, 0, 0, 0.75);
+            backdrop-filter: blur(8px);
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border: 1px solid rgba(255,255,255,0.15);
+        }
+        .dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--primary);
+            box-shadow: 0 0 10px var(--primary);
+        }
+        .dot.busy {
+            background: #f59e0b;
+            box-shadow: 0 0 10px #f59e0b;
+        }
+        .description-card {
+            background: var(--card-bg);
+            backdrop-filter: blur(20px);
+            border-radius: 18px;
+            padding: 18px;
+            border: 1px solid rgba(255,255,255,0.15);
+            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+            pointer-events: auto;
+            max-height: 40vh;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .desc-text {
+            font-size: 1.15rem;
+            line-height: 1.6;
+            color: #f9fafb;
+            overflow-y: auto;
+            max-height: 160px;
+            font-weight: 500;
+        }
+        .desc-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.8rem;
+            color: var(--text-dim);
+            border-top: 1px solid rgba(255,255,255,0.08);
+            padding-top: 10px;
+        }
+        .actions-bar {
+            padding: 18px 20px;
+            background: rgba(15, 23, 42, 0.98);
+            backdrop-filter: blur(16px);
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            justify-content: center;
+            border-top: 1px solid rgba(255,255,255,0.1);
+            z-index: 10;
+        }
+        .btn-capture {
+            flex: 1;
+            background: linear-gradient(135deg, var(--primary), var(--primary-hover));
+            color: white;
+            border: none;
+            padding: 16px;
+            border-radius: 16px;
+            font-size: 1.2rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            cursor: pointer;
+            box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+            transition: transform 0.1s;
+        }
+        .btn-capture:active {
+            transform: scale(0.97);
+        }
+        .btn-capture:disabled {
+            opacity: 0.65;
+            cursor: not-allowed;
+        }
+        .btn-icon {
+            background: #1e293b;
+            border: 1px solid #334155;
+            color: white;
+            width: 54px;
+            height: 54px;
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.4rem;
+            cursor: pointer;
+        }
+        .btn-icon:active {
+            transform: scale(0.95);
+        }
+        .spinner {
+            display: inline-block;
+            width: 22px;
+            height: 22px;
+            border: 3px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 0.8s ease-in-out infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        input[type="file"] {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="logo">
+            <span>👓</span>
+            <span>بصيرة | Basera AI</span>
+        </div>
+        <div>
+            <select id="langSelect">
+                <option value="ar" selected>العربية (AR)</option>
+                <option value="en">English (EN)</option>
+            </select>
+        </div>
+    </header>
+
+    <!-- Hidden native file inputs for direct iOS camera & gallery access -->
+    <input type="file" id="cameraInput" accept="image/*" capture="environment">
+    <input type="file" id="galleryInput" accept="image/*">
+
+    <div class="camera-container" id="cameraContainer">
+        <video id="video" autoplay playsinline muted></video>
+        <img id="previewImg" alt="صورة المشهد">
+
+        <div class="fallback-prompt" id="fallbackPrompt">
+            <div class="fallback-icon">📷</div>
+            <div style="font-size: 1.15rem; color: #f3f4f6; font-weight: 600;">انقر لالتقاط صورة بالكاميرا</div>
+            <div style="font-size: 0.85rem; max-width: 260px;">سيتم فتح كاميرا الآيفون مباشرة لإرسال المشهد للذكاء الاصطناعي ونطقه بصوت عالي</div>
+        </div>
+
+        <div class="camera-overlay">
+            <div class="status-pill">
+                <span class="dot" id="statusDot"></span>
+                <span id="statusText">جاهز لالتقاط المشهد</span>
+            </div>
+
+            <div class="description-card">
+                <div class="desc-text" id="descText">
+                    اضغط على الزر الأخضر بالأسفل لتصوير المشهد بكاميرا الآيفون وسيقوم الذكاء الاصطناعي بنطق الوصف بالصوت فوراً.
+                </div>
+                <div class="desc-meta">
+                    <span id="latencyText">النموذج جاهز</span>
+                    <button class="btn-icon" style="width:38px; height:38px; font-size:1.1rem;" id="btnReplay" title="إعادة النطق">🔊</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="actions-bar">
+        <button class="btn-icon" id="btnGallery" title="اختيار صورة من الهاتف">🖼️</button>
+        <button class="btn-capture" id="btnMain">
+            <span id="btnIcon">📸</span>
+            <span id="btnText">التقط المشهد الآن</span>
+        </button>
+    </div>
+
+    <script>
+        const cameraInput = document.getElementById('cameraInput');
+        const galleryInput = document.getElementById('galleryInput');
+        const btnMain = document.getElementById('btnMain');
+        const btnGallery = document.getElementById('btnGallery');
+        const btnReplay = document.getElementById('btnReplay');
+        const btnText = document.getElementById('btnText');
+        const btnIcon = document.getElementById('btnIcon');
+        const descText = document.getElementById('descText');
+        const latencyText = document.getElementById('latencyText');
+        const statusText = document.getElementById('statusText');
+        const statusDot = document.getElementById('statusDot');
+        const langSelect = document.getElementById('langSelect');
+        const previewImg = document.getElementById('previewImg');
+        const fallbackPrompt = document.getElementById('fallbackPrompt');
+        const video = document.getElementById('video');
+        const cameraContainer = document.getElementById('cameraContainer');
+
+        let lastDescription = '';
+        let isProcessing = false;
+        let hasLiveStream = false;
+
+        // 1. Try Live Video (works on HTTPS or localhost)
+        async function tryLiveVideo() {
+            if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({
+                        video: { facingMode: 'environment', width: { ideal: 1280 } },
+                        audio: false
+                    });
+                    video.srcObject = stream;
+                    video.style.display = 'block';
+                    fallbackPrompt.style.display = 'none';
+                    hasLiveStream = true;
+                    statusText.innerText = "بث الكاميرا المباشر نشط";
+                } catch (e) {
+                    // Safari blocks getUserMedia on HTTP LAN - fallback to native capture
+                    console.log("Live stream not permitted on HTTP, using native capture input");
+                    video.style.display = 'none';
+                    fallbackPrompt.style.display = 'flex';
+                    hasLiveStream = false;
+                }
+            }
+        }
+
+        // 2. Open Native Camera
+        function openNativeCamera() {
+            if (isProcessing) return;
+            cameraInput.click();
+        }
+
+        // Trigger on clicking container or main button
+        btnMain.addEventListener('click', () => {
+            if (hasLiveStream) {
+                captureFromVideo();
+            } else {
+                openNativeCamera();
+            }
+        });
+
+        cameraContainer.addEventListener('click', (e) => {
+            // Prevent trigger if clicking description card
+            if (e.target.closest('.description-card')) return;
+            if (!hasLiveStream) {
+                openNativeCamera();
+            } else {
+                captureFromVideo();
+            }
+        });
+
+        btnGallery.addEventListener('click', () => {
+            if (!isProcessing) galleryInput.click();
+        });
+
+        // 3. Handle File Selected from Camera / Gallery
+        cameraInput.addEventListener('change', (e) => handleFile(e.target.files[0]));
+        galleryInput.addEventListener('change', (e) => handleFile(e.target.files[0]));
+
+        function handleFile(file) {
+            if (!file) return;
+
+            // Show preview
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                previewImg.src = e.target.result;
+                previewImg.style.display = 'block';
+                fallbackPrompt.style.display = 'none';
+            };
+            reader.readAsDataURL(file);
+
+            // Send to backend
+            uploadAndDescribe(file);
+        }
+
+        // 4. Capture from live video if available
+        function captureFromVideo() {
+            const canvas = document.createElement('canvas');
+            canvas.width = video.videoWidth || 640;
+            canvas.height = video.videoHeight || 480;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            canvas.toBlob((blob) => {
+                uploadAndDescribe(blob);
+            }, 'image/jpeg', 0.85);
+        }
+
+        // 5. Text-To-Speech (TTS)
+        function speak(text, lang) {
+            if (!('speechSynthesis' in window)) return;
+            window.speechSynthesis.cancel();
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = lang === 'ar' ? 'ar-SA' : 'en-US';
+            utterance.rate = 0.95;
+            utterance.pitch = 1.0;
+            window.speechSynthesis.speak(utterance);
+        }
+
+        btnReplay.addEventListener('click', () => {
+            if (lastDescription) speak(lastDescription, langSelect.value);
+        });
+
+        // 6. Send Image to Backend
+        async function uploadAndDescribe(blobOrFile) {
+            if (isProcessing) return;
+            isProcessing = true;
+
+            btnMain.disabled = true;
+            btnIcon.innerHTML = '<span class="spinner"></span>';
+            btnText.innerText = langSelect.value === 'ar' ? 'جاري التحليل بالذكاء الاصطناعي...' : 'Analyzing...';
+            statusDot.className = 'dot busy';
+            statusText.innerText = langSelect.value === 'ar' ? 'النموذج يحلل المشهد...' : 'SmolVLM2 processing...';
+
+            try {
+                const formData = new FormData();
+                formData.append('image', blobOrFile, 'capture.jpg');
+                formData.append('language', langSelect.value);
+                formData.append('force', 'true');
+
+                const t0 = performance.now();
+                const response = await fetch('/describe', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+
+                const data = await response.json();
+                lastDescription = data.description || 'لم يتم استخراج وصف للمشهد';
+                descText.innerText = lastDescription;
+                latencyText.innerText = `زمن الاستجابة: ${(data.inference_ms / 1000).toFixed(1)} ثانية`;
+
+                statusDot.className = 'dot';
+                statusText.innerText = 'تم الوصف بنجاح';
+
+                // Speak aloud on iPhone
+                speak(lastDescription, langSelect.value);
+
+            } catch (err) {
+                console.error(err);
+                descText.innerText = "تعذر الاتصال بالخادم. تأكد من تشغيل start_server.bat على اللابتوب.";
+                statusDot.style.background = "#ef4444";
+                statusText.innerText = "خطأ في الاتصال";
+            } finally {
+                isProcessing = false;
+                btnMain.disabled = false;
+                btnIcon.innerText = '📸';
+                btnText.innerText = langSelect.value === 'ar' ? 'التقط المشهد الآن' : 'Snap Scene';
+            }
+        }
+
+        // Initialize on load
+        window.addEventListener('DOMContentLoaded', tryLiveVideo);
+    </script>
+</body>
+</html>

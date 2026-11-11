@@ -1,0 +1,91 @@
+name: Build Basera Mobile Apps (Android & iOS)
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build-android:
+    name: Build Android APK
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.27.3'
+          channel: 'stable'
+          cache: true
+
+      - name: Install Dependencies
+        working-directory: basera_flutter
+        run: flutter pub get
+
+      - name: Build Android Release APK
+        working-directory: basera_flutter
+        run: flutter build apk --release
+
+      - name: Upload Android APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Basera-Android-APK
+          path: basera_flutter/build/app/outputs/flutter-apk/app-release.apk
+
+  build-ios:
+    name: Build iOS IPA (iPhone)
+    runs-on: macos-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.27.3'
+          channel: 'stable'
+          cache: true
+
+      - name: Configure iOS Project
+        working-directory: basera_flutter
+        run: |
+          # Ensure iOS project structure is fully present
+          flutter create --platforms ios .
+          
+          # Inject iOS camera, microphone and speech permissions into Info.plist
+          INFO_PLIST="ios/Runner/Info.plist"
+          if [ -f "$INFO_PLIST" ]; then
+            /usr/libexec/PlistBuddy -c "Add :NSCameraUsageDescription string 'Basera uses camera to capture and describe scenes for visually impaired users.'" "$INFO_PLIST" 2>/dev/null || true
+            /usr/libexec/PlistBuddy -c "Add :NSMicrophoneUsageDescription string 'Basera uses microphone for voice navigation commands.'" "$INFO_PLIST" 2>/dev/null || true
+            /usr/libexec/PlistBuddy -c "Add :NSSpeechRecognitionUsageDescription string 'Basera uses speech recognition to parse voice commands.'" "$INFO_PLIST" 2>/dev/null || true
+          fi
+
+      - name: Install CocoaPods
+        working-directory: basera_flutter/ios
+        run: pod install
+
+      - name: Build iOS App (No Codesign)
+        working-directory: basera_flutter
+        run: flutter build ios --no-codesign --release
+
+      - name: Package IPA for Sideloadly / AltStore
+        working-directory: basera_flutter
+        run: |
+          mkdir -p Payload
+          cp -r build/ios/iphoneos/Runner.app Payload/
+          zip -r Basera.ipa Payload
+          echo "Basera.ipa packaged successfully!"
+
+      - name: Upload iOS IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: Basera-iOS-iPhone-IPA
+          path: basera_flutter/Basera.ipa

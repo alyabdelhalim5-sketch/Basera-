@@ -15,7 +15,7 @@ from PIL import Image
 
 from fastapi import FastAPI, File, UploadFile, HTTPException, Form
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, HTMLResponse
 
 # ─── Logging ────────────────────────────────────────────────────────────────
 logging.basicConfig(
@@ -74,6 +74,16 @@ app.add_middleware(
 
 
 # ─── Endpoints ───────────────────────────────────────────────────────────────
+
+@app.get("/", response_class=HTMLResponse)
+@app.get("/app", response_class=HTMLResponse)
+async def mobile_web_app():
+    """Serves the standalone Basera Mobile Web App for iOS (iPhone) and Android."""
+    html_file = Path(__file__).parent / "web_app.html"
+    if html_file.exists():
+        return HTMLResponse(content=html_file.read_text(encoding="utf-8"))
+    return HTMLResponse("<h2>Basera AI Web App</h2><p>web_app.html not found</p>")
+
 
 @app.get("/health")
 async def health():
