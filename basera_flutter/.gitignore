@@ -1,0 +1,36 @@
+# Flutter / Dart generated files
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+build/
+*.g.dart
+*.freezed.dart
+
+# Android
+**/android/.gradle/
+**/android/captures/
+**/android/gradlew
+**/android/gradlew.bat
+**/android/local.properties
+**/android/**/GeneratedPluginRegistrant.java
+
+# iOS
+**/ios/.symlinks/
+**/ios/Flutter/flutter_export_environment.sh
+**/ios/Flutter/Generated.xcconfig
+**/ios/Flutter/ephemeral/
+**/ios/Pods/
+
+# macOS
+**/macos/Flutter/GeneratedPluginRegistrant.swift
+**/macos/Flutter/ephemeral/
+
+# IDEs
+.idea/
+*.iml
+.vscode/
+*.swp
+.DS_Store
+
+# pubspec lock — keep for reproducible builds
+# pubspec.lock
