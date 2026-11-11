@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  IMPORTANT: This file must be MERGED into the existing ios/Runner/Info.plist
+  that Flutter generates. Do NOT replace the entire file — just add the keys below
+  into the <dict> section of the generated Info.plist.
+
+  Keys to add:
+-->
+<plist version="1.0">
+<dict>
+    <!-- Camera permission -->
+    <key>NSCameraUsageDescription</key>
+    <string>Basera uses the camera to capture and describe the scene around you.</string>
+
+    <!-- Microphone permission -->
+    <key>NSMicrophoneUsageDescription</key>
+    <string>Basera listens for voice commands like "describe" to trigger scene analysis.</string>
+
+    <!-- Speech recognition permission -->
+    <key>NSSpeechRecognitionUsageDescription</key>
+    <string>Basera uses speech recognition to understand your voice commands.</string>
+
+    <!-- Allow HTTP connections to local Wi-Fi backend -->
+    <key>NSAppTransportSecurity</key>
+    <dict>
+        <key>NSAllowsLocalNetworking</key>
+        <true/>
+        <key>NSAllowsArbitraryLoads</key>
+        <true/>
+    </dict>
+
+    <!-- Background audio (TTS continues if app goes to background) -->
+    <key>UIBackgroundModes</key>
+    <array>
+        <string>audio</string>
+    </array>
+</dict>
+</plist>

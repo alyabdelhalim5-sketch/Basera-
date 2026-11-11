@@ -1,0 +1,40 @@
+name: basera_flutter
+description: Basera AI Smart Glasses - Flutter Mobile App
+
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  # HTTP client for FastAPI backend
+  http: ^1.2.2
+  # Camera capture
+  camera: ^0.11.1
+  # Text-to-speech
+  flutter_tts: ^4.2.2
+  # Speech recognition (voice commands)
+  speech_to_text: ^7.0.0
+  # Persistent settings
+  shared_preferences: ^2.3.3
+  # Permissions (camera, mic)
+  permission_handler: ^11.3.1
+  # State management
+  provider: ^6.1.2
+  # Path utilities
+  path_provider: ^2.1.5
+  # Image utilities
+  image: ^4.3.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/
